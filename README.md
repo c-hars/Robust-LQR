@@ -8,6 +8,7 @@ This project involves designing a robust LQR controller for a hexacopter, design
   <tr>
     <td align="center">
       <img src="https://github.com/c-hars/Robust-LQR/blob/main/animation/animation_K0.gif"><br>
+      &nbsp;
     </td>
     <td align="center">
       <img src="https://github.com/c-hars/Robust-LQR/blob/main/animation/animation_Kr.gif"><br>
