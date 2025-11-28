@@ -1,5 +1,5 @@
-function C = C_x(psi)
+function C = C_x(phi)
     C = [1 0 0;
-         0 cos(psi) sin(psi);
-         0 -sin(psi) cos(psi)];
+         0 cos(phi) sin(phi);
+         0 -sin(phi) cos(phi)];
 end

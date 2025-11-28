@@ -70,6 +70,6 @@ function omega_bar = compute_omega_bar(qp, enabled, method)
         omega_bar(i) = omega_i_bar;
         omega_bar(to_solve_for) = omega_bar_solved_for;
 
-        end
+    end
 
 end

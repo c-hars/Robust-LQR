@@ -1,5 +1,5 @@
-function C = C_z(phi)
-    C = [cos(phi), sin(phi), 0;
-        -sin(phi), cos(phi), 0;
+function C = C_z(psi)
+    C = [cos(psi), sin(psi), 0;
+        -sin(psi), cos(psi), 0;
                 0,        0, 1];
 end
