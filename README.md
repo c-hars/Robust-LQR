@@ -1,7 +1,5 @@
 This project involves designing a robust LQR controller for a hexacopter, designed to work despite loss of thrust in one of the motors.
 
-<video width="640" controls>
-  <source src="hexacopter_response_to_motor_failure.webm" type="video/webm">
-</video>
+[![Watch the video](https://raw.githubusercontent.com/chars/Robust-LQR/main/thumbnail.jpg)](https://raw.githubusercontent.com/chars/Robust-LQR/main/hexacopter_response_to_motor_failure.webm.webm)
 
 The robust LQR controller is designed using the Linear Matrix Inequality outlined in *Extended H 2 and H*$\infty$ *norm characterizations and controller parametrizations for discrete-time systems* (MC De Oliveira, JC Geromel, J Bernussou, 2002).
