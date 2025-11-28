@@ -1,6 +1,8 @@
 This project involves designing a robust LQR controller for a hexacopter, designed to work despite loss of thrust in one of the motors.
 
-![Animation demonstrating stability despite motor failure](https://github.com/c-hars/Robust-LQR/blob/main/animation/animation.gif)
+<p align="center">
+  <img src="https://github.com/c-hars/Robust-LQR/blob/main/animation/animation.gif" alt="Animation demonstrating stability despite motor failure"/>
+</p>
 
 [![Watch the video (higher framerate)](https://github.com/c-hars/Robust-LQR/blob/main/thumbnail.jpg)](https://github.com/c-hars/Robust-LQR/blob/main/hexacopter_response_to_motor_failure.webm)
 
