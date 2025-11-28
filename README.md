@@ -8,4 +8,4 @@ This project involves designing a robust LQR controller for a hexacopter, design
 
 The robust LQR controller is designed using the Linear Matrix Inequality outlined in *Extended H 2 and H*$\infty$ *norm characterizations and controller parametrizations for discrete-time systems* (MC De Oliveira, JC Geromel, J Bernussou, 2002).
 
-Code and design can be [downloaded](https://github.com/c-hars/Robust-LQR/blob/main/notebook.mlx) and explored in MATLAB, or [viewed in the browser](https://github.com/c-hars/Robust-LQR/blob/main/notebook.md).
+The design process can be [downloaded](https://github.com/c-hars/Robust-LQR/blob/main/notebook.mlx) and explored in MATLAB, or [viewed in the browser](https://github.com/c-hars/Robust-LQR/blob/main/notebook.md).
