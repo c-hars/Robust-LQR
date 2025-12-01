@@ -47,9 +47,9 @@ Compactly, this yields the following expression for the total force/torques prod
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\left\lbrack \begin{array}{c} F_T \newline \tau_x \newline \tau_y \newline \tau_z  \end{array}\right\rbrack =M\left\lbrack \begin{array}{c} \omega_1^2 \newline \omega_2^2 \newline \vdots \newline \omega_6^2  \end{array}\right\rbrack$ where $M=\left\lbrack \begin{array}{cccc} k_F  & k_F  & ... & k_F \newline k_F (y_1 ) & k_F (y_2 ) & ... & k_F (y_6 )\newline k_F (-x_1 ) & k_F (-x_2 ) & ... & k_F (-x_6 )\newline k_M  & -k_M  & ... & -k_M  \end{array}\right\rbrack$ .
 
 
-The nonlinear dynamics used to simulate the hexacopter trajectory are the standard equations of motion (Euler's equation + Euler rate dynamics
+The nonlinear dynamics used to simulate the hexacopter trajectory are the standard equations of motion (Euler's equation + Euler rate dynamics)
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ {\dot{x} }_c =v_c $$ 
+&nbsp;&nbsp;&nbsp;&nbsp; $$ {\dot{x} }_I =C_{Ib} v_c $$ 
 
 &nbsp;&nbsp;&nbsp;&nbsp; $$ {\dot{v} }_c =-S(\omega )v_c +\frac{1}{m}\left(\left\lbrack \begin{array}{c} 0\newline 0\newline F_t  \end{array}\right\rbrack +C_{bI} \left\lbrack \begin{array}{c} 0\newline 0\newline -mg \end{array}\right\rbrack \right) $$ 
 
@@ -60,23 +60,35 @@ The nonlinear dynamics used to simulate the hexacopter trajectory are the standa
 where
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $C_{bI} =C_x (\phi )C_y (\theta )C_z (\psi )$ is the DCM from the inertial frame to the copter frame (using Euler angles $\phi ,\theta ,\psi$ )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${\dot{x} }_I$ is the hexacopter's xyz position, as measured in the *inertial* frame,
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $T_C =\left\lbrack \begin{array}{c} \tau_x \newline \tau_y \newline \tau_z  \end{array}\right\rbrack$ .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${\dot{v} }_c$ is the hexacopter's xyz velocity, as measured in the *body* frame,
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\dot{\omega}$ is the hexacopter's angular velocity, as measured in the *body* frame,
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\phi ,\theta ,\psi$ are the Euler angles describing the hexacopter's orientation: the DCM from the inertial frame to the *body* frame is $C_{bI} =C_x (\phi )C_y (\theta )C_z (\psi )$ ,
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $F_t$ and $T_C =\left\lbrack \begin{array}{c} \tau_x \newline \tau_y \newline \tau_z  \end{array}\right\rbrack$ describes the force/torques produced by the hexacopter motors, measured in the *body* frame.
+
+
+Aerodynamic drag on the hexacopter body is not included \- since there are no aerodynamic lifting surfaces, we assume this is negligible.
 
 # Linear dynamics $\dot{x} =Ax+Bu$ .
 
 Linearised about the hover equilibrium, we have
 
 
- $\begin{array}{l} {\dot{x} }_c =v_{c_x } \newline {\dot{y} }_c =v_{c_y } \newline {\dot{z} }_c =v_{c_z } \newline  \end{array}$           $\begin{array}{l} {\dot{v} }_{c_x } \approx g\theta \newline {\dot{v} }_{c_y } \approx -g\phi \newline {\dot{v} }_{c_z } \approx \frac{1}{m}\delta_{F_t } \newline  \end{array}$        $\begin{array}{l} \dot{\phi} \approx \omega_x \newline \dot{\theta} \approx \omega_y \newline \dot{\psi} \approx \omega_z  \end{array}$         $\begin{array}{l} {\dot{\omega} }_x \approx \tau_x /I_{xx} \newline {\dot{\omega} }_y \approx \tau_y /I_{yy} \newline {\dot{\omega} }_z \approx \tau_z /I_{zz} \newline  \end{array}$ .
+ $\begin{array}{l} {\dot{x} }_I \approx v_{c_x } \newline {\dot{y} }_I \approx v_{c_y } \newline {\dot{z} }_I \approx v_{c_z } \newline  \end{array}$           $\begin{array}{l} {\dot{v} }_{c_x } \approx g\theta \newline {\dot{v} }_{c_y } \approx -g\phi \newline {\dot{v} }_{c_z } \approx \frac{1}{m}\delta_{F_t } \newline  \end{array}$        $\begin{array}{l} \dot{\phi} \approx \omega_x \newline \dot{\theta} \approx \omega_y \newline \dot{\psi} \approx \omega_z  \end{array}$         $\begin{array}{l} {\dot{\omega} }_x \approx \tau_x /I_{xx} \newline {\dot{\omega} }_y \approx \tau_y /I_{yy} \newline {\dot{\omega} }_z \approx \tau_z /I_{zz} \newline  \end{array}$ .
 
 
 The state space dynamics $\dot{x} =Ax+Bu$ are formed using the state vector
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $x={\left\lbrack \begin{array}{ccccccccccccc} x_c  & y_c  & z_c  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top }$ .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top }$ .
 
 ## State matrix $A$ .
 ```matlab
@@ -84,9 +96,9 @@ The state space dynamics $\dot{x} =Ax+Bu$ are formed using the state vector
 A = zeros(12);
 
 % Position kinematics
-A(1,4) = 1;   % dx_c/dt = v_c_x
-A(2,5) = 1;   % dy_c/dt = v_c_y
-A(3,6) = 1;   % dz_c/dt = v_c_z
+A(1,4) = 1;   % dx/dt = v_c_x
+A(2,5) = 1;   % dy/dt = v_c_y
+A(3,6) = 1;   % dz/dt = v_c_z
 
 % Translational acceleration
 g = 9.81;
@@ -139,7 +151,7 @@ Use Bryson's rule to determine the cost matrices $Q,R$ .
 
 Recall the the state vector ordering is:
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ x={\left\lbrack \begin{array}{ccccccccccccc} x_c  & y_c  & z_c  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top } $$ 
+&nbsp;&nbsp;&nbsp;&nbsp; $$ x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top } $$ 
 ```matlab
 max_allowable_x = [[10 10 10]*0.01, ...  % Allowable xyz displacement, around 10cm
                    [5 5 5]*0.01, ...     % Allowable xyz velocities, around 5cm/s
@@ -168,8 +180,8 @@ Let's test the hexacopter's response to a small initial condition (all Euler ang
 qp.K = K0;
 x0 = [0 0 0 0 0 0 deg2rad([5 5 5]) 0 0 0]';
 
-% Define the function describing Motor 1's available thrust
-thrust_fcn = @(t) ones(1,qp.n_rotors);
+% Define the function describing available thrust from motors 1-6
+thrust_fcn = @(t) ones(1,qp.n_rotors); % all motors operating normally
 
 % Run the simulation
 tspan = [0 10];
@@ -183,7 +195,7 @@ plot(t,X(:,1))
 plot(t,X(:,2))
 plot(t,X(:,3))
 ylabel('Position [m]')
-legend('x_c','y_c','z_c')
+legend('x','y','z')
 
 subplot(2,1,2); hold on
 plot(t,X(:,7)*180/pi)
@@ -197,7 +209,7 @@ xlabel('Time [s]')
 
 ![figure_1.png](notebook_media/figure_1.png)
 
-The hexacopter smoothly recovers to the origin \- $Q$ and $R$ don't need further tuning.
+The hexacopter smoothly recovers to the origin. We will stick with these $Q$ and $R$ matrices for now \- the closed loop response is reasonable.
 
 # Simulate the dynamics under motor failure (nonlinear model, nominal controller $K_0$ ).
 
@@ -258,7 +270,7 @@ plot(t,X(:,1))
 plot(t,X(:,2))
 plot(t,X(:,3))
 ylabel('Position [m]')
-legend('x_c','y_c','z_c')
+legend('x','y','z')
 
 subplot(3,1,3); hold on
 plot(t,X(:,7)*180/pi)
@@ -342,7 +354,7 @@ plot(t,X(:,1))
 plot(t,X(:,2))
 plot(t,X(:,3))
 ylabel('Position [m]')
-legend('x_c','y_c','z_c')
+legend('x','y','z')
 
 subplot(3,1,3); hold on
 plot(t,X(:,7)*180/pi)
@@ -402,6 +414,101 @@ xlabel('Time [s]')
 
 The above plots show the responses to an initial condition under $K_r$ (solid lines) vs $K_0$ (dashed lines). They are largely the same except for the response in yaw, $\psi$ \- this may need to be tuned further.
 
+# Controller design \- using the LMI vs explicit optimisation.
+
+The gain $K_r$ found by solving the LMI is slightly suboptimal \- this tradeoff is required for the problem to become an LMI (a convex program that can be efficiently solved).
+
+
+An alternative approach is explicit optimisation \- this yields the true optimal controller $K_r^*$ .
+
+
+In this section, we compare the two approaches.
+
+### Explicit optimisation.
+
+Find an initial stabilising gain $K_s$ , then optimise the worst\-case LQR cost to yield $K_r^*$ (the optimal robust controller \- no conservativeness introduced by LMIs).
+
+```matlab
+tic
+% First, find a stabilising controller Ks
+Ks = find_simstab_K(A_d_set,B_d_set);
+
+% Now optimise Ks w.r.t. the robust LQR cost
+x_init = reshape(Ks,1,numel(Ks)); % vectorise the matrix K
+obj = @(x) compute_worst_case_J(reshape(x,6,12), A_d_set, B_d_set, Q, R);
+opts = optimoptions('fminunc','Display','none','Algorithm','quasi-newton');
+[x_opt, J_opt] = fminunc(obj, x_init, opts);
+Kr_opt = reshape(x_opt,qp.n_rotors,12);
+t_explicit = toc;
+J_explicit = J_opt;
+```
+
+### LMI.
+
+Use the LMI explored in previous sections to find $K_r$ .
+
+```matlab
+tic;
+Kr_LMI = get_H2_optimal_SF_controller_multiplant(A_d_set, B_d_set, Q, R); % Robust controller
+t_LMI = toc;
+J_LMI = compute_worst_case_J(Kr_LMI,A_d_set,B_d_set,Q,R);
+```
+
+### Results
+```matlab
+x0 = [0 0 0 0 0 0 deg2rad([5 5 5]) 0 0 0]';
+thrust_fcn = @(t) [1, 1, 1, 1, 1, 1];
+tspan = [0 10];
+
+qp.K = Kr_opt;
+[t1,X1] = run_sim(qp, tspan, x0, thrust_fcn);
+
+qp.K = Kr_LMI;
+[t2,X2] = run_sim(qp, tspan, x0, thrust_fcn);
+
+figure; clf; cmap = colororder();
+
+subplot(2,1,1); hold on
+plot(t1,X1(:,1), '--', 'Color', cmap(1,:))
+plot(t1,X1(:,2), '--', 'Color', cmap(2,:))
+plot(t1,X1(:,3), '--', 'Color', cmap(3,:))
+plot(t2,X2(:,1), '-', 'Color', cmap(1,:))
+plot(t2,X2(:,2), '-', 'Color', cmap(2,:))
+plot(t2,X2(:,3), '-', 'Color', cmap(3,:))
+ylabel('Position [m]')
+legend('x_r^*','y_r^*','z_r^*','x_r^{LMI}','y_r^{LMI}','z_r^{LMI}')
+
+subplot(2,1,2); hold on
+plot(t1,X1(:,7)*180/pi, '--', 'Color', cmap(1,:))
+plot(t1,X1(:,8)*180/pi, '--', 'Color', cmap(2,:))
+plot(t1,X1(:,9)*180/pi, '--', 'Color', cmap(3,:))
+plot(t2,X2(:,7)*180/pi,  '-', 'Color', cmap(1,:))
+plot(t2,X2(:,8)*180/pi,  '-', 'Color', cmap(2,:))
+plot(t2,X2(:,9)*180/pi,  '-', 'Color', cmap(3,:))
+ylabel('Euler angles [deg]')
+legend('\phi_r^*','\theta_r^*','\psi_r^*','\phi_r^{LMI}','\theta_r^{LMI}','\psi_r^{LMI}')
+
+xlabel('Time [s]')
+```
+
+![figure_5.png](notebook_media/figure_5.png)
+
+The trajectories for $x,y,z,\phi ,\theta$ are almost identical (optimal) using the suboptimal $K_r^{LMI}$ . But the resulting $\psi$ trajectory, $\psi_r^{LMI}$ , is noticeably worse.
+
+
+However, we can see that solve time for the LMI is about an order of magnitude faster:
+
+```matlab
+fprintf("Explicit optimisation: t_solve = %.2fs, J = %.2e\nLMI:                   t_solve = %.2fs, J = %.2e\n", t_explicit, J_explicit, t_LMI, J_LMI)
+```
+
+```matlabTextOutput
+Explicit optimisation: t_solve = 2.16s, J = 3.58e+05
+LMI:                   t_solve = 0.29s, J = 3.64e+05
+```
+
+
+Overall, the LMI provides a much faster way to synthesise the robust controller, but there is some tradeoff in accuracy!
 
 # Functions.
 
@@ -470,9 +577,10 @@ function dxdt = nonlinear_dynamics(x,u,qp)
     % Nonlinear translation dynamics
     omega = [omega_x; omega_y; omega_z];
     v_c = [v_c_x; v_c_y; v_c_z];
-    C_bI = C_x(phi) * C_y(theta) * C_z(psi);
+    C_bI = C_x(phi) * C_y(theta) * C_z(psi); % DCM from inertial frame to body frame
+    C_Ib = C_bI';
     g = 9.81;
-    v_c_dot = -S(omega)*v_c + (1/qp.m) * (F_t*[0;0;1] + C_bI*[0; 0; -qp.m*g]); % 
+    v_c_dot = -S(omega)*v_c + (1/qp.m) * ([0;0;F_t] + C_bI*[0; 0; -qp.m*g]);
     
     % Nonlinear rotational dynamics
     I = diag([qp.I_xx qp.I_yy qp.I_zz]);
@@ -486,8 +594,8 @@ function dxdt = nonlinear_dynamics(x,u,qp)
 
     % Stack in vector
     dxdt = zeros(12,1);
-    dxdt(1:3)   = x(4:6);         % Position derivatives = velocities
-    dxdt(4:6)   = v_c_dot;        % Translational acceleration
+    dxdt(1:3)   = C_Ib*v_c;       % Position derivatives (as measured in the inertial frame)
+    dxdt(4:6)   = v_c_dot;        % Velocity derivatives (as measured in the non-inertial body frame)
     dxdt(7:9)   = euler_dot;      % Euler angle derivatives
     dxdt(10:12) = omega_dot;      % Angular acceleration
 
@@ -553,9 +661,9 @@ function A = get_A_matrix()
     A = zeros(12);
     
     % Position kinematics
-    A(1,4) = 1;   % dx_c/dt = v_c_x
-    A(2,5) = 1;   % dy_c/dt = v_c_y
-    A(3,6) = 1;   % dz_c/dt = v_c_z
+    A(1,4) = 1;   % dx_I/dt ≈ v_c_x
+    A(2,5) = 1;   % dy_I/dt ≈ v_c_y
+    A(3,6) = 1;   % dz_I/dt ≈ v_c_z
     
     % Translational acceleration
     g = 9.81;
@@ -563,9 +671,76 @@ function A = get_A_matrix()
     A(5,7) = -g;  % ÿ_c ≈ -g * phi
     
     % Angular kinematics
-    A(7,10) = 1;  % dϕ/dt = ω_x
-    A(8,11) = 1;  % dθ/dt = ω_y
-    A(9,12) = 1;  % dψ/dt = ω_z
+    A(7,10) = 1;  % dϕ/dt ≈ ω_x
+    A(8,11) = 1;  % dθ/dt ≈ ω_y
+    A(9,12) = 1;  % dψ/dt ≈ ω_z
     
+end
+
+function max_J = compute_worst_case_J(K, A_set, B_set, Q, R)
+    n_plants = length(A_set);
+    max_J = -Inf;
+    for i=1:n_plants
+        A = A_set{i};
+        B = B_set{i};
+        max_J = max(calc_J(A,B,K,Q,R), max_J);
+    end
+end
+
+function J = calc_J(A,B,K,Q,R)
+    stability_radius = 1 - 1e-6; % slightly higher standard for stability
+    A_cl = A + B*K;
+    if all(abs(eig(A_cl)) < stability_radius) 
+        S = dlyap(A_cl', Q + K'*R*K);
+        J = trace(S);
+    else
+        J = Inf;
+    end
+    
+end
+
+function K = find_simstab_K(A_set, B_set)
+
+    n_plants = length(A_set);
+    n = size(B_set{1},1);
+    m = size(B_set{1},2);
+
+    n_verts = n_plants;
+    A_verts = A_set;
+    B_verts = B_set;
+    
+    pd_defn = 1e-3;
+    
+    % Decision variables
+    yalmip('clear')
+    X = sdpvar(n, n);
+    L = sdpvar(m, n, 'full');
+    P = cell(1, n_verts);
+    Constraints = [X >= pd_defn*eye(n)];
+    
+    for i = 1:n_verts
+        A = A_verts{i};
+        B = B_verts{i};
+        P{i} = sdpvar(n, n);
+    
+        % Stability constraint
+        stab_LMI = [P{i},         A*X + B*L;
+                    (A*X + B*L)', X + X' - P{i}];
+        Constraints = [Constraints, stab_LMI >= pd_defn*eye(2*n)];
+    end
+    
+    % Objective
+    options = sdpsettings('solver', 'mosek', 'verbose', 0);
+    sol = optimize(Constraints, [], options);
+    
+    if sol.problem == 0
+        X = value(X);
+        L = value(L);
+        K = L * inv(X);
+    else
+        disp('Problem during optimization:');
+        sol.info
+    end
+
 end
 ```
