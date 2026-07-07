@@ -13,7 +13,7 @@ function omega_bar = compute_omega_bar(qp, enabled, method)
        -kM * enabled .* qp.dirs; ...
     ];
     
-    if strcmp(method, 'least_squares')
+    if nargin < 3 || strcmp(method, 'least_squares')
         % Solve for the omega_bar s.t. [F_T, tau_x, tau_y, tau_z] = [mg, 0, 0, 0]
         %  - multiple solutions possible
         %  - use of pinv() selects the minimum Euclidean norm soln

@@ -1,4 +1,5 @@
-function K = get_H2_optimal_SF_controller_multiplant(A_set, B_set, Q, R)
+function K = dlqr_multiplant(A_set, B_set, Q, R)
+% Guaranteed-cost state feedback over a plant set. Sign convention matches dlqr(): u = -Kx.
 
     n_plants = length(A_set);
     n = size(Q,1);
@@ -63,10 +64,10 @@ function K = get_H2_optimal_SF_controller_multiplant(A_set, B_set, Q, R)
         % disp('Feasible solution found.')
         X = value(X);
         L = value(L);
-        K = L / X;
+        K = -L / X;
     else
         % disp('Problem during optimization:');
-        sol.info
+        error('dlqr_multiplant: %s', sol.info)
     end
 
 end

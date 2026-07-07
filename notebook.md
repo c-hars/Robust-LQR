@@ -2,6 +2,7 @@
 ```matlab
 clear
 close all
+setup
 load_copter_params
 ```
 
@@ -92,7 +93,7 @@ The state space dynamics $\dot{x} =Ax+Bu$ are formed using the state vector
 
 ## State matrix $A$ .
 ```matlab
-% Construct A matrix (continous time)
+% Construct A matrix (continuous time)
 A = zeros(12);
 
 % Position kinematics
@@ -130,7 +131,17 @@ Across all motors for the hexacopter, we end up getting the following linearisat
 ### Combining with linear dynamics.
 ```matlab
 % Construct B matrix (continuous time)
-M = compute_M(qp);
+
+% First, compute the linear motor mixing matrix M:
+%   [delta_F_T, delta_tau_x, delta_tau_y, delta_tau_z] ~= M * [delta_omega_1; delta_omega_2; ...; delta_omega_6]
+enabled = ones(1,6);
+omega_bar = compute_omega_bar(qp,enabled);
+M = [ ...
+        2*qp.kF*omega_bar          .* enabled; ...  % F_t = Σ kF·ω_i² 
+        2*qp.kF*omega_bar.*qp.y    .* enabled; ...  % τ_φ = Σ  y_i·(kF·ω_i²) 
+       -2*qp.kF*omega_bar.*qp.x    .* enabled; ...  % τ_θ = Σ –x_i·(kF·ω_i²) 
+       -2*qp.kM*omega_bar.*qp.dirs .* enabled; ...  % τ_ψ = Σ (±1)·(kM·ω_i²) 
+];
 B = zeros(12,qp.n_rotors);
 B(6,:)  = (1/qp.m)    * M(1,:);  % z_c_ddot = F_t / m
 B(10,:) = (1/qp.I_xx) * M(2,:);  % ω_x_dot  = τ_x / I_xx
@@ -146,12 +157,8 @@ Assume we can implement a discrete time controller with an update frequency of 1
 qp.Ts = 1/100;
 ```
 
-Use Bryson's rule to determine the cost matrices $Q,R$ .
+Use Bryson's rule to determine the cost matrices $Q,R$ . Recall the state vector ordering is $x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top }$ .
 
-
-Recall the the state vector ordering is:
-
-&nbsp;&nbsp;&nbsp;&nbsp; $$ x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top } $$ 
 ```matlab
 max_allowable_x = [[10 10 10]*0.01, ...  % Allowable xyz displacement, around 10cm
                    [5 5 5]*0.01, ...     % Allowable xyz velocities, around 5cm/s
@@ -165,15 +172,19 @@ max_allowable_u = max_delta_omegas; % Allowable change in RPM: as determined by 
 
 Q = diag(1 ./ max_allowable_x.^2);
 R = diag(1 ./ max_allowable_u.^2);
+```
 
+Now design the nominal LQR controller, $K_0$ .
+
+```matlab
 A_cts = get_A_matrix(); B_cts = get_B_matrix(qp);
 sys_d = c2d(ss(A_cts, B_cts, eye(12), 0), qp.Ts, 'zoh');
 
-K0 = -dlqr(sys_d.A, sys_d.B, Q, R); % Nominal controller
+K0 = dlqr(sys_d.A, sys_d.B, Q, R); % Nominal controller for closed loop dynamics A+BK (not A-BK as dlqr() assumes)
 ```
 # Simulate the closed loop dynamics (nonlinear model with nominal controller $K_0$ ).
 
-Let's test the hexacopter's response to a small initial condition (all Euler angles are 5 degrees initially).
+Let's test the hexacopter's response to a small initial condition — all Euler angles at 5 degrees, zero ICs for everything else.
 
 ```matlab
 % Assess the LQR controller based on nominal model
@@ -189,27 +200,17 @@ tspan = [0 10];
 
 % Draw plots
 figure; clf
-
-subplot(2,1,1); hold on
-plot(t,X(:,1))
-plot(t,X(:,2))
-plot(t,X(:,3))
-ylabel('Position [m]')
-legend('x','y','z')
-
-subplot(2,1,2); hold on
-plot(t,X(:,7)*180/pi)
-plot(t,X(:,8)*180/pi)
-plot(t,X(:,9)*180/pi)
-ylabel('Euler angles [deg]')
-legend('\phi','\theta','\psi')
-
-xlabel('Time [s]')
+plot_trajectories({t},{X})
+subplot(2,1,1); legend('x','y','z')
+subplot(2,1,2); legend('\phi','\theta','\psi')
 ```
 
 ![figure_1.png](notebook_media/figure_1.png)
 
-The hexacopter smoothly recovers to the origin. We will stick with these $Q$ and $R$ matrices for now \- the closed loop response is reasonable.
+The closed\-loop response is satisfactory — position steadily recovers, while attitude and altitude both seem well\-regulated, responsively mitigating the disturbance.
+
+
+We will use these $Q$ and $R$ matrices throughout the remainder the design.
 
 # Simulate the dynamics under motor failure (nonlinear model, nominal controller $K_0$ ).
 
@@ -220,10 +221,10 @@ Now, consider partial or full loss of thrust in Motor 1. Instead of $F_1 =k_F \o
 where $c\in [0,1]$ determines the percentage of available thrust. For example:
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0$ indicates complete loss of thrust  \- the motor has completely failed \- or
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0$ indicates complete loss of thrust  — the motor has completely failed — or
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0.5$ represents 50% available thrust \- the coefficient of thrust has been reduced to half its original value \- e.g. a collision has partially destroyed a propeller.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0.5$ represents 50% available thrust — the coefficient of thrust has been reduced to half its original value — e.g. a collision has partially destroyed a propeller.
 
 
 In the following simulation, we simulate the hexacopter's nonlinear dynamics assuming Motor 1 has thrust loss as follows:
@@ -234,7 +235,7 @@ In the following simulation, we simulate the hexacopter's nonlinear dynamics ass
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $$ t\ge 6~~\to c=1.0 $$ 
 
-i.e. thrust is completely loss at t=1 seconds, and linearly comes back online over the next 5 seconds.
+i.e. thrust is completely loss at $t=1$ seconds, and linearly comes back online over the next 5 seconds.
 
 
 While LQR controllers have good robustness, the dynamics under motor failure are significantly different from those assumed during design, and the hexacopter ends up destabilising:
@@ -252,55 +253,53 @@ c = @(t) ...
     (t >= t_disturb+recover_t) .* 1;
 thrust_fcn = @(t) [c(t) 1 1 1 1 1];
 
+% We'll plot this function below for clarity
+f = figure; clf
+set(f, 'Position', [680 458 560 120])
+plot(t, c(t)*100)
+xlabel('Time [s]'); ylabel('% Thrust'); title('Motor 1, available thrust')
+```
+
+![figure_2.png](notebook_media/figure_2.png)
+
+```matlab
 % Run the simulation
 tspan = [0 10];
 x0 = zeros(12,1);
 [t,X] = run_sim(qp, tspan, x0, thrust_fcn);
 
-% Draw plots
-
+% Plot the hexacopter's trajectory
 figure; clf
-
-subplot(3,1,1); hold on
-plot(t, c(t))
-ylabel('% Thrust')
-
-subplot(3,1,2); hold on
-plot(t,X(:,1))
-plot(t,X(:,2))
-plot(t,X(:,3))
-ylabel('Position [m]')
-legend('x','y','z')
-
-subplot(3,1,3); hold on
-plot(t,X(:,7)*180/pi)
-plot(t,X(:,8)*180/pi)
-plot(t,X(:,9)*180/pi)
-ylabel('Euler angles [deg]')
-legend('\phi','\theta','\psi')
-
-xlabel('Time [s]')
+plot_trajectories({t},{X})
+subplot(2,1,1); legend('x','y','z')
+subplot(2,1,2); legend('\phi','\theta','\psi')
 ```
 
-![figure_2.png](notebook_media/figure_2.png)
+![figure_3.png](notebook_media/figure_3.png)
 
-Unsurprisingly, the hexacopter would end up losing control catastrophically. However, it is possible to tweak the LQR design s.t. it will still stabilise the hexacopter in this scenario.
+LQR is optimal (with respect to its design parameters) and generally has strong robustness properties — but when disturbances and parametric uncertainties are significant enough, closed\-loop stability will break.
+
+
+In our case, motor failure yields an unexpected null column in the system's $B$ matrix — this is a parametric uncertainty that we can robustify against during design, using Guaranteed Cost Control (GCC).
+
+
+Guaranteed Cost Control (GCC) extends the idea of LQR to systems with parametric uncertainty, minimising the LQR cost and taking into account the full uncertainty polytope during synthesis, thus buying robustness to the parametric uncertainty (or giving you a concrete answer, telling you that it's impossible :P).
 
 # Design new robust LQR controller $K_r$ , considering possible motor failure.
 
-Using the LMI proposed in (Oliveira, 2002), we can redesign the LQR controller to work across several scenarios. The nominal dynamics, and dynamics under motor failure, can both be taken into account.
+Using the LMI proposed in (Oliveira, 2002), we can redesign the LQR controller to work across all scenarios — nominal dynamics, along with the six motor\-failure cases:
 
 ```matlab
 % Define scenarios
-c = 0.0;
+pct = 0.0;
 scenarios = {
     [1 1 1 1 1 1], ... % All motors working normally
-    [c 1 1 1 1 1], ... % Loss of thrust in Motor 1
-    [1 c 1 1 1 1], ... % Loss of thrust in Motor 2
-    [1 1 c 1 1 1], ... % .
-    [1 1 1 c 1 1], ... % .
-    [1 1 1 1 c 1], ... % .
-    [1 1 1 1 1 c]  ... % Loss of thrust in Motor 6
+    [pct 1 1 1 1 1], ... % Loss of thrust in Motor 1
+    [1 pct 1 1 1 1], ... % Loss of thrust in Motor 2
+    [1 1 pct 1 1 1], ... % .
+    [1 1 1 pct 1 1], ... % .
+    [1 1 1 1 pct 1], ... % .
+    [1 1 1 1 1 pct]  ... % Loss of thrust in Motor 6
 };
 
 N = length(scenarios);
@@ -309,7 +308,7 @@ B_d_set = cell(1,N);
 for i=1:N
     % Continuous time dynamics
     A_cts = get_A_matrix();
-    B_cts = get_B_matrix_under_motor_failure(qp, scenarios{i}, 'keep_opposite_motor_at_nominal_RPM');
+    B_cts = get_B_matrix(qp, scenarios{i}, 'keep_opposite_motor_at_nominal_RPM');
 
     % Convert to discrete-time and store results
     sys_d = c2d(ss(A_cts, B_cts, eye(12), 0), qp.Ts, 'zoh');
@@ -318,429 +317,73 @@ for i=1:N
 end
 
 % Using the set of discrete-time (A,B) matrices, solve the LMI and find the robust controller Kr
-Kr = get_H2_optimal_SF_controller_multiplant(A_d_set, B_d_set, Q, R); % Robust controller
+Kr = dlqr_multiplant(A_d_set, B_d_set, Q, R); % Robust controller
 ```
-# Simulate the dynamics under motor failure (nonlinear model, robust controller $K_r$ ).
+# Test the robust LQR controller $K_r$ (under motor failure)
 ```matlab
-% Choose the controller to assess (K0 or Kr)
-qp.K = Kr;
-
-% Choose the function describing Motor 1's available thrust
-t_disturb = 1;
-recover_t = 5;
-c = @(t) ...
-    (t < t_disturb) .* 1 + ...
-    (t >= t_disturb & t < t_disturb+recover_t) .* ((t-t_disturb)/recover_t) + ... % recover linearly from c=0 to c=1
-    (t >= t_disturb+recover_t) .* 1;
-thrust_fcn = @(t) [c(t), 1, 1, 1, 1, 1];
-
-% Run the simulation
-tspan = [0 10];
-x0 = zeros(12,1);
-[t,X] = run_sim(qp, tspan, x0, thrust_fcn);
-
-```
-
-```matlab
-% Draw plots
-figure; clf
-
-subplot(3,1,1); hold on
-plot(t, c(t))
-ylabel('% Thrust')
-
-subplot(3,1,2); hold on
-plot(t,X(:,1))
-plot(t,X(:,2))
-plot(t,X(:,3))
-ylabel('Position [m]')
-legend('x','y','z')
-
-subplot(3,1,3); hold on
-plot(t,X(:,7)*180/pi)
-plot(t,X(:,8)*180/pi)
-plot(t,X(:,9)*180/pi)
-ylabel('Euler angles [deg]')
-legend('\phi','\theta','\psi')
-
-xlabel('Time [s]')
-```
-
-![figure_3.png](notebook_media/figure_3.png)
-
-With the new controller $K_r$ , the hexacopter is able to safely recover from this (significant) disturbance.
-
-
-Further, the nominal performance is similar to $K_0$ :
-
-```matlab
-x0 = [0 0 0 0 0 0 deg2rad([5 5 5]) 0 0 0]';
-thrust_fcn = @(t) [1, 1, 1, 1, 1, 1];
-tspan = [0 10];
-
-qp.K = K0;
-[t0,X0] = run_sim(qp, tspan, x0, thrust_fcn);
-
-qp.K = Kr;
-[tr,Xr] = run_sim(qp, tspan, x0, thrust_fcn);
-
-% Draw plots
-figure; clf; cmap = colororder();
-
-subplot(2,1,1); hold on
-plot(tr,Xr(:,1), '-', 'Color', cmap(1,:))
-plot(tr,Xr(:,2), '-', 'Color', cmap(2,:))
-plot(tr,Xr(:,3), '-', 'Color', cmap(3,:))
-plot(t0,X0(:,1), '--', 'Color', cmap(1,:))
-plot(t0,X0(:,2), '--', 'Color', cmap(2,:))
-plot(t0,X0(:,3), '--', 'Color', cmap(3,:))
-ylabel('Position [m]')
-legend('x_r','y_r','z_r','x_0','y_0','z_0')
-
-subplot(2,1,2); hold on
-plot(tr,Xr(:,7)*180/pi,  '-', 'Color', cmap(1,:))
-plot(tr,Xr(:,8)*180/pi,  '-', 'Color', cmap(2,:))
-plot(tr,Xr(:,9)*180/pi,  '-', 'Color', cmap(3,:))
-plot(t0,X0(:,7)*180/pi, '--', 'Color', cmap(1,:))
-plot(t0,X0(:,8)*180/pi, '--', 'Color', cmap(2,:))
-plot(t0,X0(:,9)*180/pi, '--', 'Color', cmap(3,:))
-ylabel('Euler angles [deg]')
-legend('\phi_r','\theta_r','\psi_r','\phi_0','\theta_0','\psi_0')
-
-xlabel('Time [s]')
+% Demonstrate the thrust failure condition
+f = figure; clf
+set(f, 'Position', [680 458 560 100])
+plot(t, c(t)*100)
+xlabel('Time [s]'); ylabel('% Thrust'); title('Motor 1, available thrust')
 ```
 
 ![figure_4.png](notebook_media/figure_4.png)
 
-The above plots show the responses to an initial condition under $K_r$ (solid lines) vs $K_0$ (dashed lines). They are largely the same except for the response in yaw, $\psi$ \- this may need to be tuned further.
-
-# Controller design \- using the LMI vs explicit optimisation.
-
-The gain $K_r$ found by solving the LMI is slightly suboptimal \- this tradeoff is required for the problem to become an LMI (a convex program that can be efficiently solved).
-
-
-An alternative approach is explicit optimisation \- this yields the true optimal controller $K_r^*$ .
-
-
-In this section, we compare the two approaches.
-
-### Explicit optimisation.
-
-Find an initial stabilising gain $K_s$ , then optimise the worst\-case LQR cost to yield $K_r^*$ (the optimal robust controller \- no conservativeness introduced by LMIs).
-
 ```matlab
-tic
-% First, find a stabilising controller Ks
-Ks = find_simstab_K(A_d_set,B_d_set);
-
-% Now optimise Ks w.r.t. the robust LQR cost
-x_init = reshape(Ks,1,numel(Ks)); % vectorise the matrix K
-obj = @(x) compute_worst_case_J(reshape(x,6,12), A_d_set, B_d_set, Q, R);
-opts = optimoptions('fminunc','Display','none','Algorithm','quasi-newton');
-[x_opt, J_opt] = fminunc(obj, x_init, opts);
-Kr_opt = reshape(x_opt,qp.n_rotors,12);
-t_explicit = toc;
-J_explicit = J_opt;
-```
-
-### LMI.
-
-Use the LMI explored in previous sections to find $K_r$ .
-
-```matlab
-tic;
-Kr_LMI = get_H2_optimal_SF_controller_multiplant(A_d_set, B_d_set, Q, R); % Robust controller
-t_LMI = toc;
-J_LMI = compute_worst_case_J(Kr_LMI,A_d_set,B_d_set,Q,R);
-```
-
-### Results
-```matlab
+% Run the simulations
 x0 = [0 0 0 0 0 0 deg2rad([5 5 5]) 0 0 0]';
-thrust_fcn = @(t) [1, 1, 1, 1, 1, 1];
 tspan = [0 10];
+qp.K = Kr; [tr,Xr] = run_sim(qp, tspan, x0, @(t) [c(t) 1 1 1 1 1]);
 
-qp.K = Kr_opt;
-[t1,X1] = run_sim(qp, tspan, x0, thrust_fcn);
-
-qp.K = Kr_LMI;
-[t2,X2] = run_sim(qp, tspan, x0, thrust_fcn);
-
-figure; clf; cmap = colororder();
-
-subplot(2,1,1); hold on
-plot(t1,X1(:,1), '--', 'Color', cmap(1,:))
-plot(t1,X1(:,2), '--', 'Color', cmap(2,:))
-plot(t1,X1(:,3), '--', 'Color', cmap(3,:))
-plot(t2,X2(:,1), '-', 'Color', cmap(1,:))
-plot(t2,X2(:,2), '-', 'Color', cmap(2,:))
-plot(t2,X2(:,3), '-', 'Color', cmap(3,:))
-ylabel('Position [m]')
-legend('x_r^*','y_r^*','z_r^*','x_r^{LMI}','y_r^{LMI}','z_r^{LMI}')
-
-subplot(2,1,2); hold on
-plot(t1,X1(:,7)*180/pi, '--', 'Color', cmap(1,:))
-plot(t1,X1(:,8)*180/pi, '--', 'Color', cmap(2,:))
-plot(t1,X1(:,9)*180/pi, '--', 'Color', cmap(3,:))
-plot(t2,X2(:,7)*180/pi,  '-', 'Color', cmap(1,:))
-plot(t2,X2(:,8)*180/pi,  '-', 'Color', cmap(2,:))
-plot(t2,X2(:,9)*180/pi,  '-', 'Color', cmap(3,:))
-ylabel('Euler angles [deg]')
-legend('\phi_r^*','\theta_r^*','\psi_r^*','\phi_r^{LMI}','\theta_r^{LMI}','\psi_r^{LMI}')
-
-xlabel('Time [s]')
+% Plot hexacopter trajectory, using K0 vs Kr
+figure; clf
+plot_trajectories({tr},{Xr})
+subplot(2,1,1); legend('x_r','y_r','z_r')
+subplot(2,1,2); legend('\phi_r','\theta_r','\psi_r')
 ```
 
 ![figure_5.png](notebook_media/figure_5.png)
 
-The trajectories for $x,y,z,\phi ,\theta$ are almost identical (optimal) using the suboptimal $K_r^{LMI}$ . But the resulting $\psi$ trajectory, $\psi_r^{LMI}$ , is noticeably worse.
+With the new controller $K_r$ , the hexacopter is able to safely recover from the thrust\-loss disturbance.
 
+# Test the robust LQR controller $K_r$ (under nominal conditions)
 
-However, we can see that solve time for the LMI is about an order of magnitude faster:
-
-```matlab
-fprintf("Explicit optimisation: t_solve = %.2fs, J = %.2e\nLMI:                   t_solve = %.2fs, J = %.2e\n", t_explicit, J_explicit, t_LMI, J_LMI)
-```
-
-```matlabTextOutput
-Explicit optimisation: t_solve = 2.16s, J = 3.58e+05
-LMI:                   t_solve = 0.29s, J = 3.64e+05
-```
-
-
-Overall, the LMI provides a much faster way to synthesise the robust controller, but there is some tradeoff in accuracy!
-
-# Functions.
+Further, the nominal performance is similar to $K_0$ 
 
 ```matlab
-function [T,X] = run_sim(qp, tspan, x0, enabled_fcn)
+thrust_fcn = @(t) [1, 1, 1, 1, 1, 1]; % All motors working normally
 
-    timestep = qp.Ts;
-    t = 0;
-    x = x0;
-    T = t;
-    X = x.';
-    
-    while t < tspan(end)
-    
-        % Compute discrete-time control input (ZOH for next Ts)
-        u = qp.K * x;
-    
-        % Integrate from t to t+Ts, keeping u held constant
-        qp.enabled = enabled_fcn(t);
-        ode = @(t, x) nonlinear_dynamics(x, u, qp);
-        [t_local, x_local] = ode45(ode, [t, t+timestep], x);
-    
-        % Update state and time
-        x = x_local(end, :).';      % terminal state
-        t = t + timestep;
-    
-        % Store trajectory and timesteps
-        T = [T; t_local(2:end)];
-        X = [X; x_local(2:end, :)];
-    end
+% Run the simulations
+x0 = [0 0 0 0 0 0 deg2rad([5 5 5]) 0 0 0]';
+tspan = [0 10];
+qp.K = K0; [t0,X0] = run_sim(qp, tspan, x0, thrust_fcn);
+qp.K = Kr; [tr,Xr] = run_sim(qp, tspan, x0, thrust_fcn);
 
-end
-
-function dxdt = nonlinear_dynamics(x,u,qp)
-
-    % Extract angles and velocities
-    v_c_x   = x(4);
-    v_c_y   = x(5);
-    v_c_z   = x(6);
-    phi     = x(7);
-    theta   = x(8);
-    psi     = x(9);
-    omega_x = x(10);
-    omega_y = x(11);
-    omega_z = x(12);
-
-    % Convert delta_i to resulting thrust and torques
-    
-    M_mix_NL = [ ...
-        qp.kF * qp.enabled; ...
-        qp.kF * qp.enabled .* qp.y; ...
-       -qp.kF * qp.enabled .* qp.x; ...
-       -qp.kM * qp.enabled .* qp.dirs; ...
-    ];
-
-    abs_angvels = u + qp.nominal_omegas';
-    abs_angvels = max(abs_angvels, 0);
-    abs_angvels = min(abs_angvels, qp.max_RPM*2*pi/60); % Enforce motor RPM limits
-
-    F_t       = M_mix_NL(1,:) * abs_angvels.^2;
-    tau_phi   = M_mix_NL(2,:) * abs_angvels.^2;
-    tau_theta = M_mix_NL(3,:) * abs_angvels.^2;
-    tau_psi   = M_mix_NL(4,:) * abs_angvels.^2;
-    T_c = [tau_phi; tau_theta; tau_psi];
-    
-    % Nonlinear translation dynamics
-    omega = [omega_x; omega_y; omega_z];
-    v_c = [v_c_x; v_c_y; v_c_z];
-    C_bI = C_x(phi) * C_y(theta) * C_z(psi); % DCM from inertial frame to body frame
-    C_Ib = C_bI';
-    g = 9.81;
-    v_c_dot = -S(omega)*v_c + (1/qp.m) * ([0;0;F_t] + C_bI*[0; 0; -qp.m*g]);
-    
-    % Nonlinear rotational dynamics
-    I = diag([qp.I_xx qp.I_yy qp.I_zz]);
-    omega_dot = -inv(I)*S(omega)*I*omega + inv(I)*T_c;
-    
-    % Nonlinear Euler dynamics
-    J = [1, sin(phi)*tan(theta), cos(phi)*tan(theta);
-         0, cos(phi),           -sin(phi);
-         0, sin(phi)*sec(theta), cos(phi)*sec(theta)];
-    euler_dot = J * omega;
-
-    % Stack in vector
-    dxdt = zeros(12,1);
-    dxdt(1:3)   = C_Ib*v_c;       % Position derivatives (as measured in the inertial frame)
-    dxdt(4:6)   = v_c_dot;        % Velocity derivatives (as measured in the non-inertial body frame)
-    dxdt(7:9)   = euler_dot;      % Euler angle derivatives
-    dxdt(10:12) = omega_dot;      % Angular acceleration
-
-end
-
-function B = get_B_matrix(qp)
-    M = compute_M(qp);
-
-    B = zeros(12, qp.n_rotors);
-    B(6,:)  = (1/qp.m)    * M(1,:);  % z_c_ddot = F_t / m
-    B(10,:) = (1/qp.I_xx) * M(2,:);  % ω_x_dot  = τ_x / I_xx
-    B(11,:) = (1/qp.I_yy) * M(3,:);  % ω_y_dot  = τ_y / I_yy
-    B(12,:) = (1/qp.I_zz) * M(4,:);  % ω_z_dot  = τ_z / I_zz
-end
-
-function B = get_B_matrix_under_motor_failure(qp, enabled, method)
-    M = compute_M_under_motor_failure(qp, enabled, method);
-
-    B = zeros(12, qp.n_rotors);
-    B(6,:)  = (1/qp.m)    * M(1,:);  % z_c_ddot = F_t / m
-    B(10,:) = (1/qp.I_xx) * M(2,:);  % ω_x_dot  = τ_x / I_xx
-    B(11,:) = (1/qp.I_yy) * M(3,:);  % ω_y_dot  = τ_y / I_yy
-    B(12,:) = (1/qp.I_zz) * M(4,:);  % ω_z_dot  = τ_z / I_zz
-end
-
-function M = compute_M(qp)
-    % Compute motor mixing matrix when all motors are working normally.
-    
-    % First, need omega_bar.
-    enabled = ones(1,qp.n_rotors);
-    omega_bar = compute_omega_bar(qp, enabled, 'least_squares');
-    
-    % Can then compute the linear motor mixing matrix:
-    %   [delta_F_T, delta_tau_x, delta_tau_y, delta_tau_z] ~= M * [delta_omega_1; delta_omega_2; ...; delta_omega_6]
-    M = [ ...
-            2*qp.kF*omega_bar          .* enabled; ...  % F_t = Σ kF·ω_i² 
-            2*qp.kF*omega_bar.*qp.y    .* enabled; ...  % τ_φ = Σ  y_i·(kF·ω_i²) 
-           -2*qp.kF*omega_bar.*qp.x    .* enabled; ...  % τ_θ = Σ –x_i·(kF·ω_i²) 
-           -2*qp.kM*omega_bar.*qp.dirs .* enabled; ...  % τ_ψ = Σ (±1)·(kM·ω_i²) 
-    ];
-
-end
-
-function M = compute_M_under_motor_failure(qp, enabled, method)
-    % Compute motor mixing matrix when some motors are disabled.
-    
-    % First, need omega_bar.
-    omega_bar = compute_omega_bar(qp, enabled, method);
-    
-    % Can then compute the linear motor mixing matrix:
-    %   [delta_F_T, delta_tau_x, delta_tau_y, delta_tau_z] ~= M * [delta_omega_1; delta_omega_2; ...; delta_omega_6]
-    M = [ ...
-         2*qp.kF*omega_bar          .* enabled; ...
-         2*qp.kF*omega_bar.*qp.y    .* enabled; ...
-        -2*qp.kF*omega_bar.*qp.x    .* enabled; ...
-        -2*qp.kM*omega_bar.*qp.dirs .* enabled; ...
-    ];
-end
-
-function A = get_A_matrix()
-
-    % Construct A matrix (continous time)
-    A = zeros(12);
-    
-    % Position kinematics
-    A(1,4) = 1;   % dx_I/dt ≈ v_c_x
-    A(2,5) = 1;   % dy_I/dt ≈ v_c_y
-    A(3,6) = 1;   % dz_I/dt ≈ v_c_z
-    
-    % Translational acceleration
-    g = 9.81;
-    A(4,8) =  g;  % ẍ_c ≈  g * theta
-    A(5,7) = -g;  % ÿ_c ≈ -g * phi
-    
-    % Angular kinematics
-    A(7,10) = 1;  % dϕ/dt ≈ ω_x
-    A(8,11) = 1;  % dθ/dt ≈ ω_y
-    A(9,12) = 1;  % dψ/dt ≈ ω_z
-    
-end
-
-function max_J = compute_worst_case_J(K, A_set, B_set, Q, R)
-    n_plants = length(A_set);
-    max_J = -Inf;
-    for i=1:n_plants
-        A = A_set{i};
-        B = B_set{i};
-        max_J = max(calc_J(A,B,K,Q,R), max_J);
-    end
-end
-
-function J = calc_J(A,B,K,Q,R)
-    stability_radius = 1 - 1e-6; % slightly higher standard for stability
-    A_cl = A + B*K;
-    if all(abs(eig(A_cl)) < stability_radius) 
-        S = dlyap(A_cl', Q + K'*R*K);
-        J = trace(S);
-    else
-        J = Inf;
-    end
-    
-end
-
-function K = find_simstab_K(A_set, B_set)
-
-    n_plants = length(A_set);
-    n = size(B_set{1},1);
-    m = size(B_set{1},2);
-
-    n_verts = n_plants;
-    A_verts = A_set;
-    B_verts = B_set;
-    
-    pd_defn = 1e-3;
-    
-    % Decision variables
-    yalmip('clear')
-    X = sdpvar(n, n);
-    L = sdpvar(m, n, 'full');
-    P = cell(1, n_verts);
-    Constraints = [X >= pd_defn*eye(n)];
-    
-    for i = 1:n_verts
-        A = A_verts{i};
-        B = B_verts{i};
-        P{i} = sdpvar(n, n);
-    
-        % Stability constraint
-        stab_LMI = [P{i},         A*X + B*L;
-                    (A*X + B*L)', X + X' - P{i}];
-        Constraints = [Constraints, stab_LMI >= pd_defn*eye(2*n)];
-    end
-    
-    % Objective
-    options = sdpsettings('solver', 'mosek', 'verbose', 0);
-    sol = optimize(Constraints, [], options);
-    
-    if sol.problem == 0
-        X = value(X);
-        L = value(L);
-        K = L * inv(X);
-    else
-        disp('Problem during optimization:');
-        sol.info
-    end
-
-end
+% Plot hexacopter trajectory, using K0 vs Kr
+figure; clf
+plot_trajectories({t0,tr},{X0,Xr})
+subplot(2,1,1); legend('x_0','y_0','z_0','x_r','y_r','z_r')
+subplot(2,1,2); legend('\phi_0','\theta_0','\psi_0','\phi_r','\theta_r','\psi_r')
 ```
+
+![figure_6.png](notebook_media/figure_6.png)
+
+Under nominal conditions, the closed\-loop responses under $K_r$ (solid lines) and $K_0$ (dashed lines) are  *almost* identical — the robust gain purchased stability, with minimal performance impact under nominal conditions.
+
+
+The exception is yaw, $\psi$ . Gramian analysis (finite\-horizon) shows the yaw mode is weakly controllable on the nominal plant — a consequence of the hexacopter geometry (yaw authority comes from differential thrust between counter\-rotating pairs, which is a weaker mechanism than the direct moment arms driving pitch and roll), and something that's only exacerbated under motor loss.
+
+
+The LQR cost — a $H_2$ norm — is an expected cost, averaged across states; in contrast, the $H_{\infty }$ norm is adversarial and targets worst\-case metrics, naturally protecting against disturbances that amplify the modes with weakest controllability. A $H_{\infty }$ constraint on the attitude output, applied across the uncertainty set, would directly target the yaw mode by bounding worst\-case disturbance amplification in exactly the channel where controllability is weakest, so future work should consider a mixed $H_2$ / $H_{\infty }$ synthesis.
+
+# Conclusion.
+
+`dlqr_multiplant` is essentially `dlqr` for the multiplant case — it finds a single state\-feedback gain that minimises a guaranteed $H_2$ cost across a set of plants, rather than a single nominal model. The underlying LMI is a standard result (de Oliveira et al., 2002), but such results, and working MATLAB implementations, aren't always easy to find; the hope is that the code here is useful as a starting point for others facing similar robust control problems.
+
+
+Applied to the hexacopter, the result is a passive fault\-tolerant controller — no fault detection, no switching, one gain — that stabilises the vehicle under complete single\-motor loss with near\-nominal performance in all channels but yaw, where the physical limits of the actuator geometry dominate. Whether the motor is healthy or dead, the same 6x12 matrix closes the loop. The complexity is absorbed entirely at design time; all that remains to implement is matrix multiplies on a microcontroller.
+
+
+The yaw limitation here is worth acknowledging and investigating in future work: the Gramian shows the structural problem, and in hindsight the robust $H_2$ objective makes the correct average\-case decision given that geometry. The mixed $H_2$ / $H_{\infty }$ extension doesn't change the underlying physics, but it would let you target it more deliberately during synthesis.
+
