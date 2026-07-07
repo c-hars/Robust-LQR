@@ -38,6 +38,10 @@ function omega_bar = compute_omega_bar(qp, enabled, method)
             % disp("keep_opposite_motor_at_nominal_RPM method used despite no motor failure - reverting to least_squares")
             omega_bar = compute_omega_bar(qp, enabled, 'least_squares');
             return
+        elseif numel(disabled_motor_idx) > 1
+            warning("Invalid usage: keep_opposite_motor_at_nominal_RPM assumes only one motor is offline. Reverting to least squares.")
+            omega_bar = compute_omega_bar(qp, enabled, 'least_squares');
+            return
         end
 
         opposite_motor_idx = mod(disabled_motor_idx+2,6)+1;
@@ -72,4 +76,4 @@ function omega_bar = compute_omega_bar(qp, enabled, method)
 
     end
 
-end
+end 

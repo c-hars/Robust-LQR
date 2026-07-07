@@ -14,42 +14,44 @@ function K = get_H2_optimal_SF_controller_multiplant(A_set, B_set, Q, R)
     A_verts = A_set;
     B_verts = B_set;
     
-    pd_defn = 1e-3;
+    pd_defn = 1e-12;
     
     % Decision variables
     yalmip('clear')
-    X = sdpvar(n, n);
+    X = sdpvar(n, n, 'full');
     L = sdpvar(m, n, 'full');
     mu = sdpvar(1);
-    P = cell(1, n_verts);
-    W = cell(1, n_verts);
-    Constraints = [X >= pd_defn*eye(n)];
+    P_set = cell(1, n_verts);
+    W_set = cell(1, n_verts);
+    Constraints = [mu >= 0];
     
-    Q_sqrt = chol(Q, 'lower');
-    R_sqrt = chol(R, 'lower');
+    Q_sqrt = sqrtm(Q);
+    R_sqrt = sqrtm(R);
+    B_w = eye(n);
     C_z = [Q_sqrt; zeros(m,n)];
     D_zu = [zeros(n,m); R_sqrt];
-    
+
     for i = 1:n_verts
         A = A_verts{i};
         B = B_verts{i};
     
-        P{i} = sdpvar(n, n);
-        W{i} = sdpvar(n+m, n+m);
+        P_set{i} = sdpvar(n, n, 'symmetric');      P = P_set{i};
+        W_set{i} = sdpvar(n+m, n+m, 'symmetric');  W = W_set{i};
     
-        % Stability constraint
-        stab_LMI = [P{i},         A*X + B*L;
-                    (A*X + B*L)', X + X' - P{i}];
-        Constraints = [Constraints, stab_LMI >= pd_defn*eye(2*n)];
+        % Stability + gramian
+        stab_LMI = [P,            A*X + B*L,     B_w; ...
+                    (A*X + B*L)', X + X' - P,    zeros(n);  ...
+                    B_w',         zeros(n),      eye(n)   ];
+        Constraints = [Constraints, stab_LMI >= pd_defn];
     
-        % H2 performance constraint
-        CzX_DzuL = C_z*X + D_zu*L;
-        perf_LMI = [W{i},       CzX_DzuL;
-                    CzX_DzuL',  X + X' - P{i}];
-        Constraints = [Constraints, perf_LMI >= pd_defn*eye(2*n + m)];
+        % H2 performance
+        perf_LMI = [W,                 C_z*X + D_zu*L;
+                    (C_z*X + D_zu*L)', X + X' - P     ];
+        Constraints = [Constraints, perf_LMI >= pd_defn];
     
         % trace(W) <= mu
-        Constraints = [Constraints, mu >= trace(W{i})];
+        Constraints = [Constraints, trace(W) <= mu];
+    
     end
     
     % Objective
@@ -61,7 +63,7 @@ function K = get_H2_optimal_SF_controller_multiplant(A_set, B_set, Q, R)
         % disp('Feasible solution found.')
         X = value(X);
         L = value(L);
-        K = L * inv(X);
+        K = L / X;
     else
         % disp('Problem during optimization:');
         sol.info
