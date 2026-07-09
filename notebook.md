@@ -249,7 +249,7 @@ K0 = dlqr(sys_d.A, sys_d.B, Q, R); % Nominal controller for closed loop dynamics
 ```
 # Simulate the closed loop dynamics (nonlinear model with nominal controller $K_0$ ).
 
-Let's test the hexacopter's response to a small initial condition — all Euler angles at 5 degrees, zero ICs for everything else.
+Let's test the hexacopter's response to a small initial condition – all Euler angles at 5 degrees, zero ICs for everything else.
 
 ```matlab
 % Assess the LQR controller based on nominal model
@@ -272,7 +272,7 @@ subplot(2,1,2); legend('\phi','\theta','\psi')
 
 ![figure_1.png](notebook_media/figure_1.png)
 
-The closed\-loop response is satisfactory — position steadily recovers, while attitude and altitude both seem well\-regulated, responsively mitigating the disturbance.
+The closed\-loop response is satisfactory – position steadily recovers, while attitude and altitude both seem well\-regulated, responsively mitigating the disturbance.
 
 
 We will use these $Q$ and $R$ matrices throughout the remainder the design.
@@ -288,10 +288,10 @@ $$
 where $c\in [0,1]$ determines the percentage of available thrust. For example:
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0$ indicates complete loss of thrust  — the motor has completely failed — or
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0$ indicates complete loss of thrust  – the motor has completely failed – or
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0.5$ represents 50% available thrust — the coefficient of thrust has been reduced to half its original value — e.g. a collision has partially destroyed a propeller.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $c=0.5$ represents 50% available thrust – the coefficient of thrust has been reduced to half its original value – e.g. a collision has partially destroyed a propeller.
 
 
 In the following simulation, we simulate the hexacopter's nonlinear dynamics assuming Motor 1 has thrust loss as follows:
@@ -350,17 +350,17 @@ subplot(2,1,2); legend('\phi','\theta','\psi')
 
 ![figure_3.png](notebook_media/figure_3.png)
 
-LQR is optimal (with respect to its design parameters) and generally has strong robustness properties — but when disturbances and parametric uncertainties are significant enough, closed\-loop stability will break.
+LQR is optimal (with respect to its design parameters) and generally has strong robustness properties – but when disturbances and parametric uncertainties are significant enough, closed\-loop stability will break.
 
 
-In our case, motor failure yields an unexpected null column in the system's $B$ matrix — this is a parametric uncertainty that we can robustify against during design, using Guaranteed Cost Control (GCC).
+In our case, motor failure yields an unexpected null column in the system's $B$ matrix – this is a parametric uncertainty that we can robustify against during design, using Guaranteed Cost Control (GCC).
 
 
 Guaranteed Cost Control (GCC) extends the idea of LQR to systems with parametric uncertainty, minimising the LQR cost and taking into account the full uncertainty polytope during synthesis, thus buying robustness to the parametric uncertainty (or giving you a concrete answer, telling you that it's impossible :P).
 
 # Design new robust LQR controller $K_r$ , considering possible motor failure.
 
-Using the LMI proposed in (Oliveira, 2002), we can redesign the LQR controller to work across all scenarios — nominal dynamics, along with the six motor\-failure cases:
+Using the LMI proposed in (Oliveira, 2002), we can redesign the LQR controller to work across all scenarios – nominal dynamics, along with the six motor\-failure cases:
 
 ```matlab
 % Define scenarios
@@ -442,21 +442,27 @@ subplot(2,1,2); legend('\phi_0','\theta_0','\psi_0','\phi_r','\theta_r','\psi_r'
 
 ![figure_6.png](notebook_media/figure_6.png)
 
-Under nominal conditions, the closed\-loop responses under $K_r$ (solid lines) and $K_0$ (dashed lines) are  *almost* identical — the robust gain purchased stability, with minimal performance impact under nominal conditions.
+Under nominal conditions, the closed\-loop responses under $K_r$ (solid lines) and $K_0$ (dashed lines) are  *almost* identical – the robust gain purchased stability, with minimal performance impact under nominal conditions.
 
 
-The exception is yaw, $\psi$ . Gramian analysis (finite\-horizon) shows the yaw mode is weakly controllable on the nominal plant — a consequence of the hexacopter geometry (yaw authority comes from differential thrust between counter\-rotating pairs, which is a weaker mechanism than the direct moment arms driving pitch and roll), and something that's only exacerbated under motor loss.
+The exception is yaw, $\psi$ . Gramian analysis (finite\-horizon) shows the yaw mode is weakly controllable on the nominal plant – a consequence of the hexacopter geometry (yaw authority comes from differential thrust between counter\-rotating pairs, which is a weaker mechanism than the direct moment arms driving pitch and roll), and something that's only exacerbated under motor loss.
 
 
-The LQR cost — a $H_2$ norm — is an expected cost, averaged across states; in contrast, the $H_{\infty }$ norm is adversarial and targets worst\-case metrics, naturally protecting against disturbances that amplify the modes with weakest controllability. A $H_{\infty }$ constraint on the attitude output, applied across the uncertainty set, would directly target the yaw mode by bounding worst\-case disturbance amplification in exactly the channel where controllability is weakest, so future work should consider a mixed $H_2$ / $H_{\infty }$ synthesis.
+The LQR cost — an $H_2$ norm — is an expected cost, averaged across states; in contrast, the $H_{\infty }$ norm is adversarial and targets worst\-case metrics, naturally protecting against disturbances that amplify the modes with weakest controllability. An $H_{\infty }$ constraint on the attitude output, applied across the uncertainty set, would directly target the yaw mode by bounding worst\-case disturbance amplification in exactly the channel where controllability is weakest, so future work should consider a mixed $H_2$ / $H_{\infty }$ synthesis.
 
 # Conclusion.
 
-`dlqr_multiplant` is essentially `dlqr` for the multiplant case — it finds a single state\-feedback gain that minimises a guaranteed $H_2$ cost across a set of plants, rather than a single nominal model. The underlying LMI is a standard result (de Oliveira et al., 2002), but such results, and working MATLAB implementations, aren't always easy to find; the hope is that the code here is useful as a starting point for others facing similar robust control problems.
+`dlqr_multiplant` is essentially `dlqr` for the multiplant case – it finds a single state\-feedback gain that minimises a guaranteed $H_2$ cost across a set of plants, rather than a single nominal model. The underlying LMI is a standard result (de Oliveira et al., 2002), but such results, and working MATLAB implementations, aren't always easy to find; the hope is that the code here is useful as a starting point for others facing similar robust control problems.
 
 
 Applied to the hexacopter, the result is a passive fault\-tolerant controller — no fault detection, no switching, one gain — that stabilises the vehicle under complete single\-motor loss with near\-nominal performance in all channels but yaw, where the physical limits of the actuator geometry dominate. Whether the motor is healthy or dead, the same 6x12 matrix closes the loop. The complexity is absorbed entirely at design time; all that remains to implement is matrix multiplies on a microcontroller.
 
+## Future Work
 
-The yaw limitation here is worth acknowledging and investigating in future work: the Gramian shows the structural problem, and in hindsight the robust $H_2$ objective makes the correct average\-case decision given that geometry. The mixed $H_2$ / $H_{\infty }$ extension doesn't change the underlying physics, but it would let you target it more deliberately during synthesis.
+The yaw limitation here is worth noting. The Gramian shows the structural problem, and in hindsight the robust objective makes a defensible decision given that geometry: the guaranteed\-cost synthesis bounds an $H_2$\-type cost over the worst plant in the polytope, but the cost itself is still an averaged, expected\-energy measure; it has no mechanism to single out one weak channel. A mixed $H_2$ / $H_{\infty }$ extension would let you target the yaw mode deliberately during synthesis, along with any other adversarial modes.
+
+
+The Gramian may also be useful for informing the choice of $Q$ (set $Q = W_c^{-1}(N)$), particularly since its full\-block structure encodes cross\-state coupling that's discarded by straightforward diagonal choices of $Q$. Since the system is open\-loop unstable, only the finite\-horizon Gramian is well-defined, which makes the horizon $N$ a tuning parameter in its own right. Too short, and the coupling hasn't propagated through the attitude\-velocity\-position chains, but too long and the integrator dynamics grossly inflate the reachable energy along position states, so the inverse would de\-weight exactly the states you care about regulating.
+
+Both directions are worth exploring in future work.
 
