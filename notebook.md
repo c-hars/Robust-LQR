@@ -33,11 +33,15 @@ scatter(0,0,2048,'k.')
 
 Each motor is assumed to produce a thrust force according to 
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ F_i =k_F \omega_i^2 $$ 
+$$
+F_i =k_F \omega_i^2
+$$
 
 as well as a moment due to air resistance
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ M_i =\pm k_M \omega_i^2 $$ 
+$$
+M_i =\pm k_M \omega_i^2
+$$
 
 where the sign of $M_i$ depends on the motor's rotation direction (e.g. if the propeller is rotating CCW, a CW moment will be induced on the copter).
 
@@ -45,18 +49,30 @@ where the sign of $M_i$ depends on the motor's rotation direction (e.g. if the p
 Compactly, this yields the following expression for the total force/torques produced by the motors:
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\left\lbrack \begin{array}{c} F_T \newline \tau_x \newline \tau_y \newline \tau_z  \end{array}\right\rbrack =M\left\lbrack \begin{array}{c} \omega_1^2 \newline \omega_2^2 \newline \vdots \newline \omega_6^2  \end{array}\right\rbrack$ where $M=\left\lbrack \begin{array}{cccc} k_F  & k_F  & ... & k_F \newline k_F (y_1 ) & k_F (y_2 ) & ... & k_F (y_6 )\newline k_F (-x_1 ) & k_F (-x_2 ) & ... & k_F (-x_6 )\newline k_M  & -k_M  & ... & -k_M  \end{array}\right\rbrack$ .
+$$
+\left\lbrack \begin{array}{c} F_T \\ \tau_x \\ \tau_y \\ \tau_z \end{array}\right\rbrack =M\left\lbrack \begin{array}{c} \omega_1^2 \\ \omega_2^2 \\ \vdots \\ \omega_6^2 \end{array}\right\rbrack
+\qquad\text{where}\qquad
+M=\left\lbrack \begin{array}{cccc} k_F & k_F & \cdots & k_F \\ k_F (y_1 ) & k_F (y_2 ) & \cdots & k_F (y_6 )\\ k_F (-x_1 ) & k_F (-x_2 ) & \cdots & k_F (-x_6 )\\ k_M & -k_M & \cdots & -k_M \end{array}\right\rbrack
+$$
 
 
 The nonlinear dynamics used to simulate the hexacopter trajectory are the standard equations of motion (Euler's equation + Euler rate dynamics)
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ {\dot{x} }_I =C_{Ib} v_c $$ 
+$$
+{\dot{x} }_I =C_{Ib} v_c
+$$
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ {\dot{v} }_c =-S(\omega )v_c +\frac{1}{m}\left(\left\lbrack \begin{array}{c} 0\newline 0\newline F_t  \end{array}\right\rbrack +C_{bI} \left\lbrack \begin{array}{c} 0\newline 0\newline -mg \end{array}\right\rbrack \right) $$ 
+$$
+{\dot{v} }_c =-S(\omega )v_c +\frac{1}{m}\left(\left\lbrack \begin{array}{c} 0\\ 0\\ F_t  \end{array}\right\rbrack +C_{bI} \left\lbrack \begin{array}{c} 0\\ 0\\ -mg \end{array}\right\rbrack \right)
+$$
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ \dot{\omega} =-{\mathbb{I}}^{-1} S(\omega )\mathbb{I}\omega +{\mathbb{I}}^{-1} T_c $$ 
+$$
+\dot{\omega} =-{\mathbb{I}}^{-1} S(\omega )\mathbb{I}\omega +{\mathbb{I}}^{-1} T_c
+$$
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ \left\lbrack \begin{array}{c} \dot{\phi} \newline \dot{\theta} \newline \dot{\psi}  \end{array}\right\rbrack =\left\lbrack \begin{array}{ccc} 1 & \sin \phi \tan \theta  & \cos \phi \tan \theta \newline 0 & \cos \phi  & -\sin \phi \newline 0 & \sin \phi \sec \theta  & \cos \phi \sec \theta  \end{array}\right\rbrack \left\lbrack \begin{array}{c} \phi \newline \theta \newline \psi  \end{array}\right\rbrack $$ 
+$$
+\left\lbrack \begin{array}{c} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi}  \end{array}\right\rbrack =\left\lbrack \begin{array}{ccc} 1 & \sin \phi \tan \theta  & \cos \phi \tan \theta \\ 0 & \cos \phi  & -\sin \phi \\ 0 & \sin \phi \sec \theta  & \cos \phi \sec \theta  \end{array}\right\rbrack \left\lbrack \begin{array}{c} \phi \\ \theta \\ \psi  \end{array}\right\rbrack
+$$
 
 where
 
@@ -73,7 +89,7 @@ where
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\phi ,\theta ,\psi$ are the Euler angles describing the hexacopter's orientation: the DCM from the inertial frame to the *body* frame is $C_{bI} =C_x (\phi )C_y (\theta )C_z (\psi )$ ,
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $F_t$ and $T_C =\left\lbrack \begin{array}{c} \tau_x \newline \tau_y \newline \tau_z  \end{array}\right\rbrack$ describes the force/torques produced by the hexacopter motors, measured in the *body* frame.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $F_t$ and $T_C =\left\lbrack \begin{smallmatrix} \tau_x \\ \tau_y \\ \tau_z \end{smallmatrix}\right\rbrack$ describes the force/torques produced by the hexacopter motors, measured in the *body* frame.
 
 
 Aerodynamic drag on the hexacopter body is not included \- since there are no aerodynamic lifting surfaces, we assume this is negligible.
@@ -83,13 +99,23 @@ Aerodynamic drag on the hexacopter body is not included \- since there are no ae
 Linearised about the hover equilibrium, we have
 
 
- $\begin{array}{l} {\dot{x} }_I \approx v_{c_x } \newline {\dot{y} }_I \approx v_{c_y } \newline {\dot{z} }_I \approx v_{c_z } \newline  \end{array}$           $\begin{array}{l} {\dot{v} }_{c_x } \approx g\theta \newline {\dot{v} }_{c_y } \approx -g\phi \newline {\dot{v} }_{c_z } \approx \frac{1}{m}\delta_{F_t } \newline  \end{array}$        $\begin{array}{l} \dot{\phi} \approx \omega_x \newline \dot{\theta} \approx \omega_y \newline \dot{\psi} \approx \omega_z  \end{array}$         $\begin{array}{l} {\dot{\omega} }_x \approx \tau_x /I_{xx} \newline {\dot{\omega} }_y \approx \tau_y /I_{yy} \newline {\dot{\omega} }_z \approx \tau_z /I_{zz} \newline  \end{array}$ .
+$$
+\begin{array}{l} {\dot{x} }_I \approx v_{c_x } \\ {\dot{y} }_I \approx v_{c_y } \\ {\dot{z} }_I \approx v_{c_z } \end{array}
+\qquad
+\begin{array}{l} {\dot{v} }_{c_x } \approx g\theta \\ {\dot{v} }_{c_y } \approx -g\phi \\ {\dot{v} }_{c_z } \approx \frac{1}{m}\delta_{F_t } \end{array}
+\qquad
+\begin{array}{l} \dot{\phi} \approx \omega_x \\ \dot{\theta} \approx \omega_y \\ \dot{\psi} \approx \omega_z \end{array}
+\qquad
+\begin{array}{l} {\dot{\omega} }_x \approx \tau_x /I_{xx} \\ {\dot{\omega} }_y \approx \tau_y /I_{yy} \\ {\dot{\omega} }_z \approx \tau_z /I_{zz} \end{array}
+$$
 
 
 The state space dynamics $\dot{x} =Ax+Bu$ are formed using the state vector
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top }$ .
+$$
+x={\left\lbrack \begin{array}{cccccccccccc} x_I & y_I & z_I & v_{c_x } & v_{c_y } & v_{c_z } & \phi & \theta & \psi & \omega_x & \omega_y & \omega_z \end{array}\right\rbrack }^{\top }
+$$
 
 ## State matrix $A$ .
 ```matlab
@@ -126,7 +152,11 @@ Similarly, $\delta_{M_1 } \approx \pm (2k_M {\bar{\omega} }_1 )\delta_{\omega_1 
 Across all motors for the hexacopter, we end up getting the following linearisation of the motor mixing matrix:
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $\left\lbrack \begin{array}{c} \delta_{F_T } \newline \delta_{\tau_x } \newline \delta_{\tau_y } \newline \delta_{\tau_z }  \end{array}\right\rbrack =M\left\lbrack \begin{array}{c} \delta_{\omega_1 } \newline \delta_{\omega_2 } \newline \vdots \newline \delta_{\omega_6 }  \end{array}\right\rbrack$  where $M=\left\lbrack \begin{array}{cccc} 2k_F {\bar{\omega} }_1  & 2k_F {\bar{\omega} }_2  & ... & 2k_F {\bar{\omega} }_6 \newline 2k_F {\bar{\omega} }_1 y_1  & 2k_F {\bar{\omega} }_2 y_2  & ... & 2k_F {\bar{\omega} }_6 y_6 \newline -2k_F {\bar{\omega} }_1 x_1  & -2k_F {\bar{\omega} }_2 x_2  & ... & -2k_F {\bar{\omega} }_6 x_6 \newline 2k_M {\bar{\omega} }_1  & -2k_M {\bar{\omega} }_2  & ... & -2k_M {\bar{\omega} }_6  \end{array}\right\rbrack$ 
+$$
+\left\lbrack \begin{array}{c} \delta_{F_T } \\ \delta_{\tau_x } \\ \delta_{\tau_y } \\ \delta_{\tau_z } \end{array}\right\rbrack =M\left\lbrack \begin{array}{c} \delta_{\omega_1 } \\ \delta_{\omega_2 } \\ \vdots \\ \delta_{\omega_6 } \end{array}\right\rbrack
+\qquad\text{where}\qquad
+M=\left\lbrack \begin{array}{cccc} 2k_F {\bar{\omega} }_1 & 2k_F {\bar{\omega} }_2 & \cdots & 2k_F {\bar{\omega} }_6 \\ 2k_F {\bar{\omega} }_1 y_1 & 2k_F {\bar{\omega} }_2 y_2 & \cdots & 2k_F {\bar{\omega} }_6 y_6 \\ -2k_F {\bar{\omega} }_1 x_1 & -2k_F {\bar{\omega} }_2 x_2 & \cdots & -2k_F {\bar{\omega} }_6 x_6 \\ 2k_M {\bar{\omega} }_1 & -2k_M {\bar{\omega} }_2 & \cdots & -2k_M {\bar{\omega} }_6 \end{array}\right\rbrack
+$$ 
 
 ### Combining with linear dynamics.
 ```matlab
@@ -157,7 +187,11 @@ Assume we can implement a discrete time controller with an update frequency of 1
 qp.Ts = 1/100;
 ```
 
-Use Bryson's rule to determine the cost matrices $Q,R$ . Recall the state vector ordering is $x={\left\lbrack \begin{array}{ccccccccccccc} x_I  & y_I  & z_I  & v_{c_x }  & v_{c_y }  & v_{c_z }  & \phi  & \theta  & \psi  & \omega_x  & \omega_y  & \omega_z  &  \end{array}\right\rbrack }^{\top }$ .
+Use Bryson's rule to determine the cost matrices $Q,R$ . Recall the state vector ordering is
+
+$$
+x={\left\lbrack \begin{array}{cccccccccccc} x_I & y_I & z_I & v_{c_x } & v_{c_y } & v_{c_z } & \phi & \theta & \psi & \omega_x & \omega_y & \omega_z \end{array}\right\rbrack }^{\top }
+$$
 
 ```matlab
 max_allowable_x = [[10 10 10]*0.01, ...  % Allowable xyz displacement, around 10cm
@@ -216,7 +250,9 @@ We will use these $Q$ and $R$ matrices throughout the remainder the design.
 
 Now, consider partial or full loss of thrust in Motor 1. Instead of $F_1 =k_F \omega_1^2$ , suppose we now have
 
-&nbsp;&nbsp;&nbsp;&nbsp; $$ F_1 =ck_F \omega_1^2 $$ 
+$$
+F_1 =ck_F \omega_1^2
+$$
 
 where $c\in [0,1]$ determines the percentage of available thrust. For example:
 
@@ -229,11 +265,17 @@ where $c\in [0,1]$ determines the percentage of available thrust. For example:
 
 In the following simulation, we simulate the hexacopter's nonlinear dynamics assuming Motor 1 has thrust loss as follows:
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $$ 0\le t<1~~\to c=1.0 $$ 
+$$
+0\le t<1~~\to c=1.0
+$$
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $$ 1\le t<6~~\to c=\frac{(t-1)}{5} $$ 
+$$
+1\le t<6~~\to c=\frac{(t-1)}{5}
+$$
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $$ t\ge 6~~\to c=1.0 $$ 
+$$
+t\ge 6~~\to c=1.0
+$$
 
 i.e. thrust is completely loss at $t=1$ seconds, and linearly comes back online over the next 5 seconds.
 
